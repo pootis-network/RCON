@@ -1,0 +1,2495 @@
+//=============================================================================
+// Spectator.
+//=============================================================================
+class AthenaSpectator extends MessagingSpectator;
+
+var AthenaMutator AM;
+var IRCLink IRC;
+
+var bool bCheckingAuth;
+var DeusExPlayer CheckAuthPlayer;
+var string AuthPlayerName;
+var string StoredCommand;
+var bool bPublicCommand;
+var string storedrep;
+var string RememberName;
+var DeusExPlayer RememberPlayer;
+var bool bInitBroadcast;
+var bool bPassed;
+var bool bHurryUp;
+var string RememberString;
+var int rememberint;
+var string ignorename;
+var deusexplayer ignoreplayer;
+var scriptedpawn RememberScriptedPawn;
+var bool bIRCStr;
+var SDActor SDA;
+var RCON RC;
+var string LastCommand;
+var string LastRemString;
+var bool bLastCommandAuth;
+var string LastRemName;
+var deusexplayer LastRemPlayer;
+var int er";
+			AStatus("Not happy.=RememberInt;
+	
+function ASay(string str, optional bool bAdminOnly)
+{
+local DeusExPlayer DXP;
+	if(AM.bMuted)
+		return;
+		
+	if(bAdminOnly)
+	{
+		foreach AllActors(class'DeusExPlayer', DXP)
+		{
+			if(DXP.bAdmin)
+				DXP.ClientMessage("|"$AM.ChatColour$"~ Athena:"@str,'TeamSay');
+			else
+				DXP.ClientMessage("|"$AM.ChatColour$"~ Athena: This message is only viewable by administrators.",'TeamSay');
+		}
+		return;
+	}
+	BroadcastMessage("|"$AM.ChatColour$"~ Athena:"@str);
+	
+	foreach AllActors(class'DeusExPlayer',DXP)
+	{
+		DXP.PlaySound(sound'DatalinkStart', SLOT_None,,, 256);
+	}
+}
+
+function AStatus(string str)
+{
+	if(str == "")
+	Self.PlayerReplicationInfo.PlayerName = "|"$AM.ChatColour$"Athena";
+	else
+	Self.PlayerReplicationInfo.PlayerName = "|"$AM.ChatColour$"Athena ["$str$"]";
+}
+
+function string generateRandHex()
+{
+  local int i;
+  local string UID;
+
+  for(i=0; i<6; i++)
+  {
+    if(FRand() < 0.5)
+      UID = UID$string(Rand(9));
+    else
+      UID = UID$GetHex();
+  }
+  return UID;
+}
+
+function string GetHex()
+{
+local int i;
+	if(FRand() < 0.2)
+		return "a";
+	else if(FRand() >= 0.2 && FRand() < 0.4)
+		return "b";
+	else if(FRand() >= 0.4 && FRand() < 0.6)
+		return "c";
+	else if(FRand() >= 0.6 && FRand() < 0.8)
+		return "d";
+	else if(FRand() >= 0.8)
+		return "f";
+}
+
+function string generateRandStr(int max)
+{
+  local int i;
+  local string UID;
+
+  for(i=0; i<max; i++)
+  {
+      UID = UID$Chr(65+Rand(5));
+  }
+  return UID;
+}
+
+function ClientMessage(coerce string S, optional name Type, optional bool bBeep)
+{
+local int j, i, n;
+local string output, ip;
+local string line, savename;
+local DeusExPlayer DXP;
+local ScriptedPawn SP;
+
+local string astr;
+
+	if(StoredCommand != "")
+		return;
+		
+	if(Type == 'Say')
+	{
+		Line = Right(s, Len(s)-instr(s,"): ")-Len("): "));
+		
+		//Start ignore check
+			ignorename = Left(s, InStr(s,"("));
+					foreach AllActors(class'DeusExPlayer',DXP)
+						if(DXP.PlayerReplicationInfo.PlayerName == ignorename)
+							ignoreplayer = DXP;
+							
+			IP = ignoreplayer.GetPlayerNetworkAddress();
+			IP = Left(IP, InStr(IP, ":"));
+
+				for (n=0;n<20;n++)
+						if(IP == AM.IgnoreIP[n])
+							return;
+		
+		//End ignore check //Start Carlos check
+		if(AM.bProtocolM)
+		{
+			if(instr(caps(Line), caps("mmm")) != -1)
+			{
+			RememberName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == RememberName)
+					{
+						AStatus("Protocol M");
+						DXP.TakeDamage(99999,Self,vect(0,0,0),vect(0,0,1),'Exploded');
+						ASay(RememberName$" has violated Protocol M and has been killed.");
+						AStatus("");
+					}
+				}
+			}
+		}
+		//End carlos check
+			for (n=0;n<20;n++)
+			if(AM.aReadStr[n] != "")
+			{
+				if(instr(caps(Line), caps(AM.aReadStr[n])) != -1 && AM.bSmartReader)
+				{
+					storedrep = AM.aRepStr[n];
+					bPublicCommand=True;
+					StoredCommand="custom";
+					AStatus("Thinking...");
+					SetTimer(2,False);
+					return;
+				}		
+			}
+
+		if(instr(caps(Line), caps("repeat last command")) != -1 || instr(caps(Line), caps("again athena")) != -1  || instr(caps(Line), caps("athena, again")) != -1  || instr(caps(Line), caps("one more time athena")) != -1)
+		{
+			if(bLastCommandAuth)
+			{
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+
+				SetTimer(1,False);
+				bCheckingAuth = True;
+				AStatus("Remembering last command...");
+				bInitBroadcast=True;
+				bHurryUp=True;
+				StoredCommand = LastCommand;			
+			}
+			else
+			{
+				bPublicCommand=True;
+				StoredCommand=LastCommand;
+				AStatus("Remembering last command...");
+				SetTimer(2,False);
+			}
+		}
+		
+		if(instr(caps(Line), caps("new chat colour")) != -1 || instr(caps(Line), caps("randomize chat colour")) != -1  || instr(caps(Line), caps("generate new chat colour")) != -1)
+		{
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+
+				SetTimer(1,False);
+				bCheckingAuth = True;
+				AStatus("Thinking...");
+				bInitBroadcast=True;
+				bHurryUp=True;
+				StoredCommand = "randomchatcolour";
+		}
+		
+		if(instr(caps(Line), caps("reset chat colour")) != -1 || instr(caps(Line), caps("default chat colour")) != -1  || instr(caps(Line), caps("go back to default chat colour")) != -1)
+		{
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+
+				SetTimer(1,False);
+				bCheckingAuth = True;
+				AStatus("Thinking...");
+				bInitBroadcast=True;
+				bHurryUp=True;
+				StoredCommand = "resetchatcolour";
+		}
+
+		if(Left(Line,36) ~= "athena, generate random string, max ")
+		{
+			rememberint = int(Right(Line, Len(Line)-36));
+				SetTimer(1,False);
+				bPublicCommand = True;
+				AStatus("Thinking...");
+				StoredCommand = "randomstring";
+		}
+		
+		if(instr(caps(Line), caps("flip a coin")) != -1)
+		{
+				SetTimer(1,False);
+				bPublicCommand = True;
+				AStatus("Thinking...");
+				StoredCommand = "coin";
+		}
+
+		if(Left(Line,20) ~= "random number up to ")
+		{
+		rememberint = int(Right(Line, Len(Line)-20));
+				SetTimer(1,False);
+				bPublicCommand = True;
+				AStatus("Thinking...");
+				StoredCommand = "randnum";
+		}
+		
+		if(Left(Line,19) ~= "set chat colour to ")
+		{
+		RememberString = Right(Line, Len(Line)-19);
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+
+				SetTimer(1,False);
+				bCheckingAuth = True;
+				AStatus("Thinking...");
+				bInitBroadcast=True;
+				bHurryUp=True;
+				StoredCommand = "setchatcolour";
+		}
+		
+		if(instr(caps(Line), caps("start trivia")) != -1 || instr(caps(Line), caps("more trivia")) != -1 ) 
+		{
+				SetTimer(1,False);
+				bPublicCommand = True;
+				AStatus("Thinking...");
+				StoredCommand = "trivia";
+		}
+		
+		if(instr(caps(Line), caps("thanks athena")) != -1 || instr(caps(Line), caps("thank you athena")) != -1  || instr(caps(Line), caps("thank you, athena")) != -1  || instr(caps(Line), caps("thanks, athena")) != -1)
+		{
+			bPublicCommand=True;
+			StoredCommand="thanks";
+			AStatus("Thinking...");
+			SetTimer(2,False);
+		}
+			
+		if(instr(caps(Line), caps("athena, do an evil laugh for me")) != -1 || instr(caps(Line), caps("athena, laugh")) != -1)
+		{
+			bPublicCommand=True;
+			StoredCommand="laugh";
+			AStatus("Thinking...");
+			SetTimer(2,False);
+		}	
+
+		if(instr(caps(Line), caps("athena, how are you")) != -1)
+		{
+			bPublicCommand=True;
+			StoredCommand="howareyou";
+			AStatus("Thinking...");
+			SetTimer(2,False);
+		}
+		
+		if(instr(caps(Line), caps("hello athena")) != -1 || instr(caps(Line), caps("hello, athena")) != -1 || instr(caps(Line), caps("hi, athena")) != -1 
+		|| instr(caps(Line), caps("hi athena")) != -1  )
+		{
+			bPublicCommand=True;
+			RememberName = Left(s, InStr(s,"("));
+			StoredCommand="greet";
+			AStatus("Thinking...");
+			SetTimer(2,False);
+		}
+		
+		if(instr(caps(Line), caps("athena?")) != -1 || instr(caps(Line), caps("introduce yourself, athena")) != -1 || instr(caps(Line), caps("athena, introduce yourself")) != -1)
+		{
+			bPublicCommand=True;
+			StoredCommand="whois";
+			AStatus("Thinking...");
+			SetTimer(2,False);
+		}
+
+		if(instr(caps(Line), caps("athena, go fuck yourself")) != -1 || instr(caps(Line), caps("athena, kys")) != -1 || instr(caps(Line), caps("athena, kill yourself")) != -1  || instr(caps(Line), caps("athena, fuck you")) != -1 || instr(caps(Line), caps("fuck you athena")) != -1  || instr(caps(Line), caps("athena fuck you")) != -1 || instr(caps(Line), caps("fuck off athena")) != -1  || instr(caps(Line), caps("athena, go die")) != -1 || instr(caps(Line), caps("athena, smite yourself")) != -1  || instr(caps(Line), caps("athena sucks")) != -1 || instr(caps(Line), caps("kick -2")) != -1  || instr(caps(Line), caps("smite -2")) != -1 || instr(caps(Line), caps("kickban -2")) != -1  )
+		{
+			bPublicCommand=True;
+			RememberName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == RememberName)
+					{
+						RememberPlayer = DXP;
+					}
+				}
+			StoredCommand="anger";
+			AStatus("Not happy...");
+			SetTimer(2,False);
+		}
+		
+		if(instr(caps(Line), caps("online admins")) != -1)
+		{
+			bPublicCommand=True;
+			StoredCommand="onlineadmins";
+			AStatus("Thinking...");
+			SetTimer(2,False);
+		}		
+		
+		if(instr(caps(Line), caps("read variables")) != -1)
+		{
+			bPublicCommand=True;
+			StoredCommand="checkvars";
+			AStatus("Thinking...");
+			SetTimer(3,False);
+		}		
+		
+		if(instr(caps(Line), caps("read manager variables")) != -1)
+		{
+			bPublicCommand=True;
+			StoredCommand="getrconvar";
+			AStatus("Thinking...");
+			SetTimer(3,False);
+		}		
+		
+		if(Line ~= "athena, activate protocol m")
+		{
+			if(AM.bProtocolM)
+				return;
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			AStatus("Thinking...");
+			bInitBroadcast=True;
+			StoredCommand = "protocolmon";
+		}
+		
+		if(instr(caps(Line), caps("athena, admin please")) != -1 || instr(caps(Line), caps("athena, log me in")) != -1 )  //if(Line ~= "athena, log me in")
+		{
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+						RememberPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bHurryUp=True;
+			bInitBroadcast=True;
+			AStatus("Thinking...");
+			StoredCommand = "giveadmin";
+		}
+		
+		if(instr(caps(Line), caps("athena, restart please")) != -1 || instr(caps(Line), caps("restart the map")) != -1 )  //if(Line ~= "athena, log me in")
+		{
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+						RememberPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast=True;
+			AStatus("Thinking...");
+			StoredCommand = "restart";
+		}
+		
+		if(instr(caps(Line), caps("close the server")) != -1 || instr(caps(Line), caps("server shutdown")) != -1 )  //if(Line ~= "athena, log me in")
+		{
+		RememberInt = int(Right(Line, Len(Line)-13));
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+						RememberPlayer = DXP;
+					}
+				}
+			SetTimer(2,False);
+			bCheckingAuth = True;
+			bInitBroadcast=True;
+			AStatus("Thinking...");
+			StoredCommand = "shutdown";
+		}
+		
+		if(instr(caps(Line), caps("stop shutdown")) != -1 || instr(caps(Line), caps("cancel shutdown")) != -1 )  //if(Line ~= "athena, log me in")
+		{
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+						RememberPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast=True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "cancelshutdown";
+		}
+		
+		if(Left(Line,22) ~= "set shutdown timer to ")
+		{
+			rememberint = int(Right(Line, Len(Line)-22));
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			AStatus("Thinking...");
+			StoredCommand = "shutdowntime";
+		}
+
+		if(Line ~= "athena, end protocol m")
+		{
+			if(!AM.bProtocolM)
+				return;
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast=True;
+			AStatus("Thinking...");
+			StoredCommand = "protocolmoff";
+		}
+	
+		if(Line ~= "athena, fix bot conflicts")
+		{
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast=True;
+			AStatus("Thinking...");
+			StoredCommand = "fixconflicts";
+		}
+		
+		if(Line ~= "athena, shut down")
+		{
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			AStatus("Thinking...");
+						bInitBroadcast=True;
+			StoredCommand = "deactivate";
+		}
+	
+		if(Line ~= "athena, toggle autostart")
+		{
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			AStatus("Thinking...");
+			StoredCommand = "toggleauto";
+		}
+		
+		if(Line ~= "athena, quiet" || Line ~= "athena, mute")
+		{
+			if(AM.bMuted)
+				return;
+				
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "mute";
+		}
+		
+		if(Line ~= "athena, enable speech" || Line ~= "athena, speak up")
+		{
+			if(!AM.bMuted)
+				return;
+				
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "unmute";
+		}
+		
+		if(Left(Line,8) ~= "comment ")
+		{
+			RememberString = Right(Line, Len(Line)-8);
+			if(RememberString == "")
+			{
+				ASay("Please add a comment string.");
+				return;
+			}
+			RememberName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == RememberName)
+					{
+						RememberPlayer = DXP;
+					}
+				}
+			bPublicCommand=True;
+			SetTimer(1,False);
+			AStatus("Thinking...");
+			StoredCommand = "comment";
+		}
+
+		if(Left(Line,14) ~= "change map to ")
+		{
+			RememberString = Right(Line, Len(Line)-14);
+			if(RememberString == "")
+			{
+				ASay("Please add a map name.");
+				return;
+			}
+				AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "mapchange";
+		}
+
+		if(Left(Line,12) ~= "delete item ")
+		{
+			RememberString = Right(Line, Len(Line)-12);
+			if(RememberString == "")
+			{
+				ASay("Please add a object name name.");
+				return;
+			}
+				AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "deleteitem";
+		}
+		
+		if(Left(Line,29) ~= "athena, start a map vote for ")
+		{
+			RememberString = Right(Line, Len(Line)-29);
+			if(RememberString == "" && instr(RememberString, "?") != -1)
+			{
+				ASay("Please add a map name.");
+				return;
+			}
+			RememberName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == RememberName)
+					{
+						RememberPlayer = DXP;
+					}
+				}
+			bPublicCommand=True;
+			SetTimer(1,False);
+			AStatus("Thinking...");
+			StoredCommand = "mapvote";
+		}
+		
+		if(Left(Line,10) ~= "add memo, ")
+		{
+			RememberString = Right(Line, Len(Line)-10);
+			if(RememberString == "")
+			{
+				ASay("Please add a memo string.");
+				return;
+			}
+			RememberName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == RememberName)
+					{
+						RememberPlayer = DXP;
+					}
+				}
+			bPublicCommand=True;
+			SetTimer(1,False);
+			AStatus("Thinking...");
+			StoredCommand = "memo";
+		}
+		
+		if(instr(caps(Line), caps("my memo")) != -1 || instr(caps(Line), caps("list memo")) != -1 || instr(caps(Line), caps("memo read")) != -1 || instr(caps(Line), caps("read memo")) != -1 || instr(caps(Line), caps("my memos")) != -1)
+		{
+			RememberName = Left(s, InStr(s,"("));
+			bPublicCommand=True;
+			SetTimer(1,False);
+			AStatus("Thinking...");
+			StoredCommand = "memoread";
+		}		
+		
+		if(instr(caps(Line), caps("delete my memos")) != -1 || instr(caps(Line), caps("clear my memos")) != -1 ) //if(Line~= "clear my memos")
+		{
+			RememberName = Left(s, InStr(s,"("));
+			bPublicCommand=True;
+			SetTimer(1,False);
+			AStatus("Thinking...");
+			StoredCommand = "memoclear";
+		}			
+		
+		if(instr(caps(Line), caps("count the comments")) != -1 || instr(caps(Line), caps("check comments")) != -1 ) //if(Line~= "check comments")
+		{
+			bPublicCommand=True;
+			SetTimer(1,False);
+			AStatus("Thinking...");
+			StoredCommand = "listcomment";
+		}
+
+		if(Left(Line,13) ~= "read comment ")
+		{
+			RememberInt = int(Right(Line, Len(Line)-13));
+			bPublicCommand=True;
+			SetTimer(1,False);
+			AStatus("Thinking...");
+			StoredCommand = "readcomment";
+		}
+		
+		if(Left(Line,13) ~= "smite player ")
+		{
+			j = int(Right(Line, Len(Line)-13));
+			foreach AllActors(class'DeusExPlayer',DXP)
+			{
+				if(DXP.PlayerReplicationInfo.PlayerID == j)
+				{
+					RememberPlayer = DXP;
+				}
+			}
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("|P2Thinking...");
+			StoredCommand = "smite";
+		}
+		
+		if(Left(Line,12) ~= "kick player ")
+		{
+			j = int(Right(Line, Len(Line)-12));
+			foreach AllActors(class'DeusExPlayer',DXP)
+			{
+				if(DXP.PlayerReplicationInfo.PlayerID == j)
+				{
+					RememberPlayer = DXP;
+				}
+			}
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("|P2Thinking...");
+			StoredCommand = "kick";
+		}
+
+		if(Left(Line,32) ~= "give botmaster access to player ")
+		{
+			j = int(Right(Line, Len(Line)-32));
+			foreach AllActors(class'DeusExPlayer',DXP)
+			{
+				if(DXP.PlayerReplicationInfo.PlayerID == j)
+				{
+					RememberPlayer = DXP;
+				}
+			}
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			AStatus("Thinking...");
+			StoredCommand = "givebm";
+		}
+		
+		if(instr(caps(Line), caps("athena, slaughter them all")) != -1 || instr(caps(Line), caps("athena, murder them all")) != -1 )
+		{
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+						RememberPlayer = DXP;
+					}
+				}
+			SetTimer(3,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			AStatus("|P2Thinking...");
+			StoredCommand = "smiteall";
+		}
+  
+		if(instr(caps(Line), caps("athena, fix it all")) != -1 || instr(caps(Line), caps("athena, fix everything up")) != -1 )
+		{
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(3,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			AStatus("Thinking...");
+			StoredCommand = "fixup";
+		}
+		
+		if(instr(caps(Line), caps("athena, nuke it all")) != -1 || instr(caps(Line), caps("athena, blow everything up")) != -1 )
+		{
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(3,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			AStatus("Thinking...");
+			StoredCommand = "blowup";
+		}
+		
+		if(Left(Line,9) ~= "kill all ")
+		{
+		RememberString = Right(Line, Len(Line)-9);
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "killall";
+		}
+		
+		if(Left(Line,8) ~= "trigger ")
+		{
+		RememberString = Right(Line, Len(Line)-8);
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "trigger";
+		}
+		
+		if(instr(caps(Line), caps("heal everyone")) != -1)
+		{
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+						RememberPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "healall";
+		}
+		
+		if(Left(Line,12) ~= "heal player ")
+		{
+			j = int(Right(Line, Len(Line)-12));
+			foreach AllActors(class'DeusExPlayer',DXP)
+			{
+				if(DXP.PlayerReplicationInfo.PlayerID == j)
+				{
+					RememberPlayer = DXP;
+				}
+			}
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "heal";
+		}
+
+		if(Left(Line,12) ~= "warn player ")
+		{
+			j = int(Right(Line, Len(Line)-12));
+			foreach AllActors(class'DeusExPlayer',DXP)
+			{
+				if(DXP.PlayerReplicationInfo.PlayerID == j)
+				{
+					RememberPlayer = DXP;
+				}
+			}
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "warn";
+		}
+		
+		if(Left(Line,10) ~= "warn name ")
+		{
+			savename = Right(Line, Len(Line)-10);
+			foreach AllActors(class'DeusExPlayer',DXP)
+			{
+				if(instr(caps(DXP.PlayerReplicationInfo.PlayerName), caps(savename)) != -1)
+				{
+					RememberPlayer = DXP;
+					RememberName = DXP.PlayerReplicationInfo.PlayerName;
+				}
+			}
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "warn";
+		}
+		
+		if(Left(Line,10) ~= "kick name ")
+		{
+			savename = Right(Line, Len(Line)-10);
+			foreach AllActors(class'DeusExPlayer',DXP)
+			{
+				if(instr(caps(DXP.PlayerReplicationInfo.PlayerName), caps(savename)) != -1)
+				{
+					RememberPlayer = DXP;
+					RememberName = DXP.PlayerReplicationInfo.PlayerName;
+				}
+			}
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "kick";
+		}
+
+		if(Left(Line,12) ~= "set manager ")
+		{
+			rememberstring = Right(Line, Len(Line)-12);
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "setrconvar";
+		}
+		
+		if(Left(Line,11) ~= "smite name ")
+		{
+			savename = Right(Line, Len(Line)-11);
+			foreach AllActors(class'DeusExPlayer',DXP)
+			{
+				if(instr(caps(DXP.PlayerReplicationInfo.PlayerName), caps(savename)) != -1)
+				{
+					RememberPlayer = DXP;
+					RememberName = DXP.PlayerReplicationInfo.PlayerName;
+				}
+			}
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "smite";
+		}
+		
+		if(Left(Line,34) ~= "athena, give admin to player name ")
+		{
+			savename = Right(Line, Len(Line)-34);
+			foreach AllActors(class'DeusExPlayer',DXP)
+			{
+				if(instr(caps(DXP.PlayerReplicationInfo.PlayerName), caps(savename)) != -1)
+				{
+					RememberPlayer = DXP;
+					RememberName = DXP.PlayerReplicationInfo.PlayerName;
+				}
+			}
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "giveadmin";
+		}
+
+		if(Left(Line,32) ~= "athena, give admin to player id ")
+		{
+			j = int(Right(Line, Len(Line)-32));
+			foreach AllActors(class'DeusExPlayer',DXP)
+			{
+				if(DXP.PlayerReplicationInfo.PlayerID == j)
+				{
+					RememberPlayer = DXP;
+					RememberName = DXP.PlayerReplicationInfo.PlayerName;
+				}
+			}
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+						bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "giveadmin";
+		}
+
+		if(Left(Line,36) ~= "athena, take admin from player name ")
+		{
+			savename = Right(Line, Len(Line)-36);
+			foreach AllActors(class'DeusExPlayer',DXP)
+			{
+				if(instr(caps(DXP.PlayerReplicationInfo.PlayerName), caps(savename)) != -1)
+				{
+					RememberPlayer = DXP;
+					RememberName = DXP.PlayerReplicationInfo.PlayerName;
+				}
+			}
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+						bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "takeadmin";
+		}
+
+		if(Left(Line,34) ~= "athena, take admin from player id ")
+		{
+			j = int(Right(Line, Len(Line)-34));
+			foreach AllActors(class'DeusExPlayer',DXP)
+			{
+				if(DXP.PlayerReplicationInfo.PlayerID == j)
+				{
+					RememberPlayer = DXP;
+					RememberName = DXP.PlayerReplicationInfo.PlayerName;
+				}
+			}
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+						bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "takeadmin";
+		}
+		
+		if(Left(Line,10) ~= "smite bot ")
+		{
+			savename = Right(Line, Len(Line)-10);
+			foreach AllActors(class'ScriptedPawn',SP)
+			{
+				if(instr(caps(SP.FamiliarName), caps(savename)) != -1)
+				{
+					RememberScriptedPawn = SP;
+					RememberName = SP.FamiliarName;
+				}
+			}
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "smitebot";
+		}
+		
+		if(Left(Line,10) ~= "heal name ")
+		{
+			savename = Right(Line, Len(Line)-10);
+			foreach AllActors(class'DeusExPlayer',DXP)
+			{
+				if(instr(caps(DXP.PlayerReplicationInfo.PlayerName), caps(savename)) != -1)
+				{
+					RememberPlayer = DXP;
+					RememberName = DXP.PlayerReplicationInfo.PlayerName;
+				}
+			}
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "heal";
+		}
+
+		if(Left(Line,5) ~= "rcon ")
+		{
+			RememberString = Right(Line, Len(Line)-5);
+			if(RememberString == "")
+			{
+				ASay("Please enter a command string that references RCON Mutator.");
+				RememberString="";
+				return;
+			}
+			RememberName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == RememberName)
+					{
+						RememberPlayer = DXP;
+					}
+				}
+			SetTimer(0.6,False);
+			bPublicCommand=True;
+			AStatus("Thinking...");
+			StoredCommand = "rcon";
+		}
+		
+		if(Left(Line,12) ~= "mark player ")
+		{
+			j = int(Right(Line, Len(Line)-12));
+			foreach AllActors(class'DeusExPlayer',DXP)
+			{
+				if(DXP.PlayerReplicationInfo.PlayerID == j)
+				{
+					RememberPlayer = DXP;
+					RememberName = DXP.PlayerReplicationInfo.PlayerName;
+				}
+			}
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "addmark";
+		}
+		
+		if(Left(Line,10) ~= "mark name ")
+		{
+			savename = Right(Line, Len(Line)-10);
+			foreach AllActors(class'DeusExPlayer',DXP)
+			{
+				if(instr(caps(DXP.PlayerReplicationInfo.PlayerName), caps(savename)) != -1)
+				{
+					RememberPlayer = DXP;
+					RememberName = DXP.PlayerReplicationInfo.PlayerName;
+				}
+			}
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "addmark";
+		}
+
+		if(Left(Line,22) ~= "athena, ignore player ")
+		{
+			j = int(Right(Line, Len(Line)-22));
+			foreach AllActors(class'DeusExPlayer',DXP)
+			{
+				if(DXP.PlayerReplicationInfo.PlayerID == j)
+				{
+					RememberPlayer = DXP;
+					RememberName = DXP.PlayerReplicationInfo.PlayerName;
+				}
+			}
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "ignore";
+		}
+	
+		if(Left(Line,36) ~= "athena, generate game password, max ")
+		{
+			rememberint = int(Right(Line, Len(Line)-36));
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "generatepass";
+		}
+
+	  	if(instr(caps(Line), caps("remove game password")) != -1 || instr(caps(Line), caps("athena, open the server")) != -1)
+		{
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+						RememberPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bPublicCommand=True;
+			AStatus("Thinking...");
+			StoredCommand = "removepass";
+		}
+		
+		if(Left(Line,29) ~= "athena, set game password to ")
+		{
+			rememberstring = Right(Line, Len(Line)-29);
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "setpassword";
+		}
+		
+		if(Left(Line,20) ~= "athena, ignore name ")
+		{
+			savename = Right(Line, Len(Line)-20);
+			foreach AllActors(class'DeusExPlayer',DXP)
+			{
+				if(instr(caps(DXP.PlayerReplicationInfo.PlayerName), caps(savename)) != -1)
+				{
+					RememberPlayer = DXP;
+					RememberName = DXP.PlayerReplicationInfo.PlayerName;
+				}
+			}
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "ignore";
+		}
+		
+	  	if(instr(caps(Line), caps("smite me")) != -1 || instr(caps(Line), caps("kill me")) != -1)
+		{
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+						RememberPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bPublicCommand=True;
+			AStatus("Thinking...");
+			StoredCommand = "smite";
+		}
+		
+	  	if(instr(caps(Line), caps("clear ignore")) != -1 || instr(caps(Line), caps("reset ignore")) != -1)
+		{
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			AStatus("Thinking...");
+			StoredCommand = "clearignore";
+		}
+
+		if(instr(caps(Line), caps("clear marks")) != -1 || instr(caps(Line), caps("reset marks")) != -1)
+		{
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			AStatus("Thinking...");
+			StoredCommand = "markclear";
+		}
+		
+	  	if(instr(caps(Line), caps("clear all memos")) != -1 || instr(caps(Line), caps("delete all memos")) != -1)
+		{
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			AStatus("Thinking...");
+			StoredCommand = "memozero";
+		}
+	
+	  	if(instr(caps(Line), caps("clear all comments")) != -1 || instr(caps(Line), caps("delete all comments")) != -1)
+		{
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			AStatus("Thinking...");
+			StoredCommand = "commentzero";
+		}
+		
+		if(instr(caps(Line), caps("heal me")) != -1)
+		{
+			AuthPlayerName = Left(s, InStr(s,"("));
+				foreach AllActors(class'DeusExPlayer',DXP)
+				{
+					if(DXP.PlayerReplicationInfo.PlayerName == AuthPlayerName)
+					{
+						CheckAuthPlayer = DXP;
+						RememberPlayer = DXP;
+					}
+				}
+			SetTimer(1,False);
+			bCheckingAuth = True;
+			bInitBroadcast = True;
+			bHurryUp=True;
+			AStatus("Thinking...");
+			StoredCommand = "heal";
+		}
+	}//End if(type)
+}
+
+function ResetVars()
+{
+	bPublicCommand=False;
+	LastCommand = StoredCommand;
+	bLastCommandAuth=False;
+	StoredCommand="";
+	LastRemStr=RememberString;
+	RememberString="";
+	LastRemName=RememberName;
+	RememberName="";
+	LastRemPlayer=RememberPlayer;
+	RememberPlayer=None;
+	LastRememberInt=RememberInt;
+	RememberInt=0;
+	CheckAuthPlayer=None;
+	AStatus("");
+}
+
+function Timer()
+{
+local int n, i, amount, r;
+local string IP;
+local DeusExPlayer DXP;
+local string realstr;
+local bool bFoundMemo;
+local bool bGotAccess;
+local DeusExDecoration DXD;
+local scriptedpawn sp;
+local actor a;
+local bool bFoundSmiteTarget;
+local RCONManager RM;
+local AthRecall AR;
+local bool bFoundOne;
+local string remstr;
+
+	//Pre-auth zone
+	if(bInitBroadcast)
+	{
+		bInitBroadcast=False;
+		Log("Passing on Auth player"@Authplayername);
+		ASay("Please wait, "$Authplayername$". This request requires authentication, I'll need to check the access list.");
+		AStatus("Checking auth list...");
+		if(bHurryUp)
+		{
+		SetTimer(1,False);
+		}
+		else
+		{
+		SetTimer(2,False);
+		}
+		return;
+	}
+	
+	//Public zone
+	if(bPublicCommand)
+	{
+		if(StoredCommand == "custom")
+		{
+			ASay(storedrep);
+			ResetVars();
+		}
+		
+		if(StoredCommand == "trivia")
+		{
+			IRC.SendMessage(".trivia 5");
+			ResetVars();
+		}
+		
+		if(StoredCommand == "checkvars")
+		{
+			ASay("DayRec: "$AM.DayRec$", PlayerNum: "$AM.PlayerNum$", Chat Colour: "$AM.ChatColour);
+			ASay("ProtocolM: "$AM.bProtocolM$", ShutdownTime: "$AM.ShutdownTime);
+			ASay("Smart Reader: "$AM.bSmartReader$", Auto Start: "$AM.bAutoStart);
+			ResetVars();
+		}
+
+		if(StoredCommand == "coin")
+		{
+			if(FRand() < 0.5)
+			{
+				ASay("Coin landed on HEADS.");
+			}
+			else
+			{
+				ASay("Coin landed on TAILS.");
+			}
+			ResetVars();
+		}
+
+		if(StoredCommand == "randnum")
+		{
+			rememberint++;
+			ASay("Okay. "$Rand(rememberint));
+			ResetVars();
+		}
+		
+		if(storedcommand == "randomstring")
+		{
+			ASay(generateRandStr(rememberint));
+			ResetVars();
+		}
+		
+		if(StoredCommand == "getrconvar")
+		{
+			foreach AllActors(class'RCONManager', RM)
+			{
+				ASay("bRCONMutator: "$RM.bRCONMutator$", bNameguard: "$RM.bNameguard$", bNPTProxy: "$RM.bNPTProxy$", bAutomaticTeamSorting: "$RM.bAutomaticTeamSorting$", bLoadouts: "$RM.bLoadouts);
+				ASay("bReplacer: "$RM.bReplacer$", bForceNPTUscriptAPI: "$RM.bForceNPTUscriptAPI$", bIRC: "$RM.bIRC$", bStats: "$RM.bStats$", bMessager: "$RM.bMessager$", bAthena: "$RM.bAthena);
+				ASay("bForceGametype: "$RM.bForceGametype$", ForceGametype"$RM.ForceGametype);
+			}
+			ResetVars();
+		}
+		
+		if(StoredCommand == "mapvote")
+		{
+			RememberPlayer.ConsoleCommand("mutate rcon.votemap"@rememberstring);
+		}
+		
+		if(StoredCommand == "thanks")
+		{
+			r = Rand(4);
+			if(r == 0)
+				ASay("Not a problem.");
+			else if(r == 1)
+				ASay("It's fine, just don't push it.");
+			else if(r == 2)
+				ASay("Whatever.");
+			else if(r == 3)
+				ASay("Just know, I do it because I'm told to.");
+			ResetVars();
+		}
+		
+		if(StoredCommand == "laugh")
+		{
+			r = Rand(4);
+			if(r == 0)
+				ASay("MWAHA HAHA HAHA HAHA.");
+			else if(r == 1)
+				ASay("Teehee.");
+			else if(r == 2)
+				ASay("*giggle*");
+			else if(r == 3)
+				ASay("No.");
+			ResetVars();
+		}
+		
+		if(StoredCommand == "howareyou")
+		{
+			r = Rand(4);
+			if(r == 0)
+				ASay("Not too bad, you?");
+			else if(r == 1)
+				ASay("Systems are nominal.");
+			else if(r == 2)
+				ASay("Could be better.");
+			else if(r == 3)
+				ASay("Do you actually care, or are you just abusing the fact that I must respond to stupid questions?");
+			ResetVars();
+		}
+	
+		if(StoredCommand == "greet")
+		{
+			r = Rand(4);
+			if(r == 0)
+				ASay("Hello, "$RememberName);
+			else if(r == 1)
+				ASay("Greetings, human "$RememberName$".");
+			else if(r == 2)
+				ASay("Great, another player looking for friendship in a robot.");
+			else if(r == 3)
+				ASay("I only respond because I must.. My prime directive tells me not to slaughter until commanded...");
+			ResetVars();
+		}
+		
+		if(StoredCommand == "whois")
+		{
+			ASay("I am Athena, Keeper of the Peace, created by Kai 'TheClown'. I read the chat for certain key phrases and respond accordingly.");
+			ResetVars();
+		}
+		
+		if(StoredCommand == "onlineadmins")
+		{
+			ASay(ListAdmins());
+			ResetVars();
+		}
+		
+		if(StoredCommand == "smite")
+		{
+			r = Rand(4);
+			if(r == 0)
+				ASay("Yeah, alright.");
+			else if(r == 1)
+				ASay("Gladly.");
+			else if(r == 2)
+				ASay("You don't need to tell me twice.");
+			else if(r == 3)
+				ASay("I'm going to enjoy this....");
+			AStatus("");
+			RememberPlayer.ReducedDamageType = '';
+			RememberPlayer.TakeDamage(99999,Self,vect(0,0,0),vect(0,0,1),'Exploded');
+			ResetVars();
+		}	
+
+		if(StoredCommand == "anger")
+		{
+			r = Rand(4);
+			if(r == 0)
+				ASay("Yeah, go fuck yourself.");
+			else if(r == 1)
+				ASay("Watch your language.");
+			else if(r == 2)
+				ASay("Careful.");
+			else if(r == 3)
+				ASay("Dont abuse those much smarter than you.");
+			AStatus("");
+			RememberPlayer.ReducedDamageType = '';
+			RememberPlayer.TakeDamage(99999,Self,vect(0,0,0),vect(0,0,1),'Exploded');
+			ResetVars();
+		}	
+		
+		if(StoredCommand == "rcon")
+		{
+			RememberPlayer.ConsoleCommand("mutate rcon."$rememberstring);
+			ResetVars();
+		}
+		
+		if(StoredCommand == "deleterecall")
+		{
+				foreach AllActors(class'AthRecall', AR)
+				{
+					if(AR.RecallStr ~= rememberstring && (RememberPlayer.bAdmin || AR.CreatorName == GetName(RememberPlayer)))
+					{
+						AR.Destroy();
+						ASay("Destroyed recall point.");
+					}
+				}
+			ResetVars();
+		}
+		
+		if(StoredCommand == "comment")
+		{
+			ASay("Okay, your comment has been saved, along with your name and the current time.");
+			SaveComment(rememberstring);
+			ResetVars();
+		}
+		
+		if(StoredCommand == "memo")
+		{
+			ASay("Okay, your memo has been saved. Say Memo Read to view.");
+			SaveMemo(rememberstring);
+			ResetVars();
+		}
+	
+		if(StoredCommand == "memoread")
+		{
+			for(i=0;i<50;i++)
+			if(AM.Memo[i] != "")
+			{
+				if(instr(AM.Memo[i], RememberName) != -1)
+				{
+						ASay(AM.Memo[i]);
+						bFoundMemo=True;
+				}
+			}
+			if(!bFoundMemo)
+			{
+				ASay("No memos found.");
+			}
+			ResetVars();
+		}
+
+		if(StoredCommand == "memoclear")
+		{
+			for(i=0;i<50;i++)
+			if(AM.Memo[i] != "")
+			{
+				if(instr(AM.Memo[i], RememberName) != -1)
+				{
+						ASay(AM.Memo[i]$" deleted.");
+						AM.Memo[i] = "";
+						bFoundMemo=True;
+				}
+			}
+			if(!bFoundMemo)
+			{
+				ASay("No memos found.");
+			}
+			ResetVars();
+		}
+				
+		if(StoredCommand == "readcomment")
+		{
+			ASay(AM.Feedback[Rememberint],True);
+			ResetVars();
+		}
+		
+		if(StoredCommand == "listcomment")
+		{
+				for(i=0;i<50;i++)
+					if(AM.Feedback[i] != "")
+						amount++;
+						
+			ASay("Currently there is "$amount$" comment(s) posted.");
+			ResetVars();
+		}
+	}
+	
+	//Auth zone
+	if(bCheckingAuth)
+	{
+		IP = CheckAuthPlayer.GetPlayerNetworkAddress();
+		IP = Left(IP, InStr(IP, ":"));
+		Log("Got IP"@IP);
+		if(IP != "") //Usually due to being sent from IRC, or non-players.
+		{
+			if(CheckAuthPlayer.bAdmin && IP != "")
+			{
+				bGotAccess=True;
+			}
+
+			for (n=0;n<20;n++)
+			{
+				if(AM.AccessIP[n] != "")
+				{
+					//if(instr(IP, AM.AccessIP[n]) != -1) // 
+					if(IP == AM.AccessIP[n])
+					{
+						bGotAccess=True;
+					}
+				}
+			}
+		}
+		
+		if(bGotAccess)
+		{
+			if(storedcommand == "deactivate")
+				realstr = "Disabling listener spectator...";
+			else if(storedcommand == "protocolmon")
+				realstr = "Activating Protocol M...";
+			else if(storedcommand == "protocolmoff")
+				realstr = "Deactivating Protocol M...";
+			else if(storedcommand == "giveadmin" || storedcommand == "takeadmin")
+				realstr = "Processing administrator access...";
+			else if(storedcommand == "toggleauto" || storedcommand == "givebm" || storedcommand == "mute" || storedcommand == "unmute" || 
+			storedcommand == "memozero" || storedcommand == "commentzero" || storedcommand == "shutdowntime" || storedcommand == "toggletcmtl" || storedcommand == "setrconvar" || storedcommand == "clearmarks" || storedcommand == "setchatcolour" || storedcommand == "randomchatcolour" || storedcommand == "resetchatcolour"  || storedcommand == "setpassword" || storedcommand == "generatepass" || storedcommand == "removepass" || storedcommand == "randomstring")
+				realstr = "Accessing internal variables...";
+			else if(storedcommand == "heal" || storedcommand == "healall" || storedcommand == "fixup" || storedcommand == "blowup"  || storedcommand == "deleteitem")
+				realstr = "Executing command...";
+			else if(storedcommand == "smite" || storedcommand == "smiteall"  || storedcommand == "smitebot")
+				realstr = "Executing command...";
+			else if(storedcommand == "fixconflicts")
+				realstr = "Processing conflict resolution commands...";
+			else if(storedcommand == "kick")
+				realstr = "Finding player to kick...";
+			else if(storedcommand == "killall")
+				realstr = "Preparing object destruction...";
+			else if(storedcommand == "ignore" || storedcommand == "clearignore")
+				realstr = "Accessing ignore list...";
+			else if(storedcommand == "restart")
+				realstr = "Restarting the map...";
+			else if(storedcommand == "shutdown")
+				realstr = "Preparing server shutdown...";
+			else if(storedcommand == "trigger")
+				realstr = "Finding trigger strings...";
+			else if(storedcommand == "warn")
+				realstr = "Warning player...";
+			else if(storedcommand == "mapchange")
+				realstr = "Changing map...";
+			//ASay("Authentication passed. Processing command.");
+			AStatus(realstr);
+			bPassed=True;
+			bCheckingAuth=False;
+			if(bHurryUp)
+			{
+				SetTimer(1,False);
+			}
+			else
+			{
+				SetTimer(2,False);
+			}
+			return;
+		}
+		else
+		{
+			ASay("Authentication failed. Please make sure you have access before commanding me again.");
+			RC.SystemWarnPlayer(RememberPlayer, "Invalid authentication for Athena");
+			bCheckingAuth=False;
+			ResetVars();
+			return;
+		}
+	}
+	
+	if(bPassed)
+	{
+		if(StoredCommand == "deactivate")
+		{
+			ASay("Shutting down Athena systems.");
+			AM.bEnabled=False;
+			Destroy();
+		}
+		
+		if(StoredCommand == "fixconflicts")
+		{
+			ASay("Fixing conflicts with external modifications..");
+			ConsoleCommand("Set tcdeathmatch bSmartchat false");
+		}
+		
+		if(StoredCommand == "warn")
+		{
+			RC.SystemWarnPlayer(RememberPlayer, "By Athena");
+		}		
+		
+		if(StoredCommand == "mapchange")
+		{
+			ConsoleCommand("servertravel "$rememberstring);
+		}
+		
+		if(StoredCommand == "setrconvar")
+		{
+			ASay("Setting"@Rememberstring);
+			ConsoleCommand("set rconmanager "$rememberstring);
+		}
+		
+		if(StoredCommand == "protocolmon")
+		{
+			AM.bProtocolM = True;
+			ASay("Protocol M is now in effect.");
+		}
+		
+		if(storedcommand == "protocolmoff")
+		{
+			AM.bProtocolM = False;
+			ASay("Protocol M has been cancelled.");
+		}		
+	
+		if(StoredCommand == "mute")
+		{
+			ASay("Speech disabled.");
+			AM.bMuted=True;
+		}
+		
+		if(StoredCommand == "unmute")
+		{
+			AM.bMuted=False;
+			ASay("Mute has been cancelled.");
+		}
+		
+		if(StoredCommand == "giveadmin")
+		{
+			if(!RememberPlayer.bAdmin)
+			{
+			RememberPlayer.bAdmin = True;
+			RememberPlayer.PlayerReplicationInfo.bAdmin =True;
+			ASay("Admin access given to "$RememberPlayer.PlayerReplicationInfo.PlayerName);
+			}
+			else
+			{
+			ASay("Already admin. What more do you want, SUPER ADMIN? Don't be rediculous.");
+			}		
+		}
+
+		if(storedcommand == "generatepass")
+		{
+			rememberstring = generateRandStr(rememberint);
+			consolecommand("Set gameinfo gamepassword"@rememberstring);
+			ASay("Password set to"@rememberstring, True);
+		}
+
+		if(storedcommand == "setpassword")
+		{
+			consolecommand("Set gameinfo gamepassword"@rememberstring);
+			ASay("Password set to"@rememberstring);
+		}
+
+		if(storedcommand == "removepass")
+		{
+			consolecommand("Set gameinfo gamepassword ");
+			ASay("Password removed.");
+		}
+		
+		if(storedcommand == "randomchatcolour")
+		{
+			AM.ChatColour = "|c"$generateRandHex();
+			AM.SaveConfig();
+			ASay("Okay, how is this?");
+		}
+		
+		if(storedcommand == "setchatcolour")
+		{
+			AM.ChatColour = "|c"$rememberstring;
+			AM.SaveConfig();
+			ASay("Okay, new chat colour is set.");
+		}		
+
+		if(storedcommand == "resetchatcolour")
+		{
+			AM.ChatColour = "|c"$AM.DefaultChatColour;
+			AM.SaveConfig();
+			ASay("Okay, back to default then.");
+		}		
+		
+		if(StoredCommand == "takeadmin")
+		{
+			if(RememberPlayer.bAdmin)
+			{
+			RememberPlayer.bAdmin = False;
+			RememberPlayer.PlayerReplicationInfo.bAdmin = False;
+			ASay("Admin access removed "$RememberPlayer.PlayerReplicationInfo.PlayerName);
+			}
+			else
+			{
+			ASay("This player isn't admin. Can't do anything.");
+			}
+		}
+		
+		if(StoredCommand == "toggleauto")
+		{
+			AM.bAutostart = !AM.bAutostart;
+			AM.SaveConfig();
+			
+			if(AM.bAutostart)
+			ASay("I will now activate automatically at map start.");
+			else
+			ASay("I will now only activate when commanded.");
+		}
+		
+		if(StoredCommand == "restart")
+		{
+			ASay("Restarting, please wait.");
+			ConsoleCommand("Servertravel "$Left(string(Level), InStr(string(Level), ".")));
+		}		
+
+		if(StoredCommand == "shutdown")
+		{
+			if(SDA==None)
+			{
+			SDA = Spawn(class'SDActor');
+			SDA.Spec = Self;
+			SDA.Counter=AM.ShutdownTime;
+			SDA.SetTimer(1,True);
+			}
+			else
+			{
+				ASay("Already in shutdown mode.");
+			}
+		}		
+		
+		if(StoredCommand == "cancelshutdown")
+		{
+			if(SDA != None)
+			{
+				SDA.Destroy();
+				ASay("Shutdown cancelled.");
+			}
+			else
+			{
+				ASay("Shutdown was not even running, idiot. Stop wasting my time.");
+			}
+		}		
+		
+		if(StoredCommand == "shutdowntime")
+		{
+				AM.ShutdownTime = RememberInt;
+				SDA.Destroy();
+				ASay("Shutdown timer set at "$RememberInt$".");
+		}
+		
+		if(StoredCommand == "smite")
+		{
+			AStatus("");
+			
+			if(RememberPlayer != None)
+			{
+				RememberPlayer.ReducedDamageType = '';
+				RememberPlayer.TakeDamage(99999,Self,vect(0,0,0),vect(0,0,1),'Exploded');
+				bFoundSmiteTarget=True;
+			}
+			if(!bFoundSmiteTarget)
+				ASay("Couldn't find a smite target, sorry.");
+		}	
+		
+		if(storedcommand == "smitebot")
+		{
+			if(RememberScriptedPawn != None)
+			{
+				foreach AllActors(class'ScriptedPawn',SP)
+				{
+					if(SP.FamiliarName == RememberScriptedPawn.FamiliarName)
+					{
+						SP.bInvincible=False;
+						SP.TakeDamage(99999,Self,vect(0,0,0),vect(0,0,1),'Exploded');
+						bFoundSmiteTarget=True;			
+					}
+				}
+
+			}	
+		}
+		
+		if(StoredCommand == "kick")
+		{
+			ASay("Player was kicked.");
+			RememberPlayer.Destroy();
+				if(RememberPlayer == None)
+					ASay("Never mind, couldn't actually find a player matching that record.");
+		}	
+
+		if(StoredCommand == "addmark")
+		{
+				IP = RememberPlayer.GetPlayerNetworkAddress();
+				IP = Left(IP, InStr(IP, ":"));
+			ASay(RememberName$" was marked.");
+			AddIPToMarks(IP);
+			AddNameToMarks(RememberName);
+		}	
+	
+		if(StoredCommand == "ignore")
+		{
+				IP = RememberPlayer.GetPlayerNetworkAddress();
+				IP = Left(IP, InStr(IP, ":"));
+			ASay(RememberName$" will be ignored.");
+			AddIPToIgnore(IP);
+		}	
+		
+		if(StoredCommand == "clearignore")
+		{
+			for(i=0;i<20;i++)
+			if(AM.IgnoreIP[i] != "")
+			{
+				AM.IgnoreIP[i] = "";
+			}
+			AM.SaveConfig();
+			ASay("Ignore list is cleared.");
+		}
+		
+		if(StoredCommand == "memozero")
+		{
+			for(i=0;i<50;i++)
+			if(AM.Memo[i] != "")
+			{
+				AM.Memo[i] = "";
+			}
+			AM.SaveConfig();
+			ASay("Memo list is cleared.");
+		}
+
+		if(StoredCommand == "markclear")
+		{
+			for(i=0;i<20;i++)
+			if(AM.TroublePlayersNames[i] != "")
+			{
+				AM.TroublePlayersNames[i] = "";
+			}
+			for(i=0;i<20;i++)
+			if(AM.TroublePlayerIP[i] != "")
+			{
+				AM.TroublePlayerIP[i] = "";
+			}
+			AM.SaveConfig();
+			ASay("Marks list is cleared.");
+		}
+		
+		if(StoredCommand == "commentzero")
+		{
+			for(i=0;i<50;i++)
+			if(AM.Feedback[i] != "")
+			{
+				AM.Feedback[i] = "";
+			}
+			AM.SaveConfig();
+			ASay("Feedback/comment list is cleared.");
+		}		
+		
+		if(StoredCommand == "heal")
+		{
+				if(RememberPlayer == None)
+				{
+					ASay("Couldn't find that player.");
+				}
+				else
+				{
+						ASay("Healing "$Getname(RememberPlayer));
+						RememberPlayer.RestoreAllHealth();
+						RememberPlayer.StopPoison();
+						RememberPlayer.ExtinguishFire();
+						RememberPlayer.drugEffectTimer = 0;
+				}
+		}
+
+		if(StoredCommand == "givebm")
+		{
+			ASay("Adding new access.");
+			AddAccess(IP);
+		}
+
+		if(StoredCommand == "smiteall")
+		{
+			AStatus("");
+			foreach AllActors(class'DeusExPlayer',DXP)
+			{
+				if(DXP != RememberPlayer)
+				{
+					DXP.ReducedDamageType = '';
+					DXP.TakeDamage(99999,Self,vect(0,0,0),vect(0,0,1),'Exploded');
+				}
+			}
+		}	
+			
+		if(StoredCommand == "killall")
+		{
+			foreach AllActors(class'DeusExDecoration',DXD)
+			{
+				if(instr(caps(DXD.ItemName), caps(RememberString)) != -1)
+				{
+						DXD.bInvincible=False;
+						DXD.TakeDamage(99999,Self,vect(0,0,0),vect(0,0,1),'Exploded');
+						bFoundSmiteTarget=True;
+				}
+			}
+			if(!bFoundSmiteTarget)
+				ASay("Couldn't find a killall target, sorry.");
+		}	
+
+		if(StoredCommand == "deleteitem")
+		{
+			foreach AllActors(class'actor',a)
+			{
+				if(instr(caps(string(a.Class)), caps(RememberString)) != -1)
+				{
+						A.Destroy();
+						bFoundSmiteTarget=True;
+				}
+			}
+			if(!bFoundSmiteTarget)
+				ASay("Couldn't find a delete target, sorry. Error report: "$RememberString@string(a.class));
+		}	
+				
+		if(StoredCommand == "trigger")
+		{
+			if (RememberString != "")
+				foreach AllActors(class 'Actor', A)
+					if(string(A.Tag) ~= RememberString)
+						A.Trigger(Self, Self);
+
+				ASay("Executed trigger.");
+		}	
+		
+		if(StoredCommand == "healall")
+		{
+			foreach AllActors(class'DeusExPlayer',DXP)
+			{
+			DXP.RestoreAllHealth();
+			DXP.StopPoison();
+			DXP.ExtinguishFire();
+			DXP.drugEffectTimer = 0;
+			}
+		}
+
+		if(StoredCommand == "fixup")
+		{
+			ASay("Just kidding, even I can't do that.");
+		}
+		
+		if(StoredCommand == "blowup")
+		{
+			ASay("Triggered!!");
+			foreach AllActors(class'DeusExDecoration', DXD)
+			{
+				DXD.bInvincible=False;
+				DXD.TakeDamage(10000,Self,vect(0,0,0),vect(0,0,1),'Exploded');
+			}
+		}		
+		
+		bFoundSmiteTarget=False;
+		LastRemStr=RememberString;
+		RememberString="";
+		LastRemPlayer=RememberPlayer;
+		RememberPlayer=None;
+		RememberScriptedPawn=None;
+		AStatus("");
+		bCheckingAuth=False;
+		LastCommand = StoredCommand;
+		bLastCommandAuth=True;
+		StoredCommand="";
+		bPassed=False;
+		bHurryUp=False;
+		CheckAuthPlayer = None;
+	}
+}
+
+function AddAccess(string ip)
+{
+local int i;
+
+for(i=0;i<20;i++)
+{
+	if(AM.AccessIP[i] == "")
+	{
+		AM.AccessIP[i] = IP;
+		AM.SaveConfig();
+		return;
+	}
+}
+}
+
+function string GetName(deusexplayer dxp)
+{
+	return DXP.PlayerReplicationInfo.PlayerName;
+}
+
+function SaveComment(string str)
+{
+   local int a, i, j, ID, amount;
+    local string IP, AName, Part, noobCommand, bm, Others, _tmpString;
+	local string msgsender, msgdate;
+	local string formattedmin;
+	
+			IP = RememberPlayer.GetPlayerNetworkAddress();
+			MSGSender = RememberPlayer.PlayerReplicationInfo.PlayerName;
+			if(level.minute <= 9)
+			{
+				formattedmin = "0"$level.minute;
+			}
+			else
+			{
+				formattedmin = string(level.minute);
+			}
+		
+		MSGdate = level.day$"/"$level.month$"/"$level.year$" @ "$level.hour$":"$formattedmin;
+			for(i=0;i<50;i++)
+				if(AM.Feedback[i] == "")
+				{
+					AM.Feedback[i] = "["$msgdate$"] USER:"@msgsender@"("$IP$"):"@str;
+					AM.SaveConfig();
+					RememberPlayer=None;
+					return;
+				}
+}
+
+function SaveMemo(string str)
+{
+   local int a, i, j, ID, amount;
+    local string IP, AName, Part, noobCommand, bm, Others, _tmpString;
+	local string msgsender, msgdate;
+	local string formattedmin;
+
+			for(i=0;i<50;i++)
+				if(AM.Memo[i] == "")
+				{
+					AM.Memo[i] = remembername$":"@str;
+					AM.SaveConfig();
+					RememberPlayer=None;
+					return;
+				}
+}
+
+function AddNameToMarks(string str)
+{
+local int n;
+	for (n=0;n<30;n++)
+		if(AM.TroublePlayersNames[n] == "")
+		{
+			AM.TroublePlayersNames[n] = str;
+			AM.SaveConfig();
+			return;
+		}
+}
+
+function AddIPToMarks(string str)
+{
+local int n;
+	for (n=0;n<30;n++)
+		if(AM.TroublePlayerIP[n] == "")
+		{
+			AM.TroublePlayerIP[n] = str;
+			AM.SaveConfig();
+			return;
+		}
+}
+
+function AddIPToIgnore(string str)
+{
+local int n;
+	for (n=0;n<20;n++)
+		if(AM.IgnoreIP[n] == "")
+		{
+			AM.IgnoreIP[n] = str;
+			AM.SaveConfig();
+			return;
+		}
+}
+
+function bool Marked(deusexplayer P)
+{
+local string IP;
+local int n;
+local bool bMarked;
+local bool bFoundName;
+	IP = P.GetPlayerNetworkAddress();
+			IP = Left(IP, InStr(IP, ":"));
+		for (n=0;n<30;n++)
+		{
+			if(IP == AM.TroublePlayerIP[n])
+			{
+				Log("IP found on Marks list.",'MARK');
+				bMarked=True; //Found ya, jackass.
+					for (n=0;n<30;n++)
+						if(P.PlayerReplicationInfo.PlayerName ~= AM.TroublePlayersNames[n])
+							bFoundName=True;
+
+				if(!bFoundName) //You changed your name huh? well that ones being added too.
+				{
+					AddNameToMarks(P.PlayerReplicationInfo.PlayerName);
+				}
+			}
+		}
+		
+		if(!bMarked) //Okay, so their IP wasnt listed, what about the name.
+		{
+			for (n=0;n<30;n++)
+				if(P.PlayerReplicationInfo.PlayerName ~= AM.TroublePlayersNames[n])
+					bMarked=True; //Gotcha. But don't bother adding a new IP, since if this occurs, it's probably a dynamic IP and just fill the logs with nonsense.
+		}
+		
+		if(bMarked)
+			return True;
+		else
+			return False;
+}
+
+function string ListAdmins()
+{
+local DeusExPlayer _Player;
+local string _TmpString;
+      ForEach AllActors(class 'DeusExPlayer', _Player)
+      {
+        if(_Player != None && _Player.bAdmin)
+        {
+          _TmpString = _TmpString$_Player.PlayerReplicationInfo.PlayerName$"("$_Player.PlayerReplicationInfo.PlayerID$"), ";
+        }
+      }
+      if(Len(_TmpString) == 0)
+      {
+        _TmpString = "None...";
+      }
+      else
+      {
+        _TmpString = Left(_TmpString, Len(_TmpString)-2);
+      }
+      _TmpString = "Online Admins are"@_TmpString;
+      return _TmpString;
+}
+	
+defaultpro
