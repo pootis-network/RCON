@@ -24,11 +24,11 @@ var(RCON) config int ForcedNetUpdateFrequency;
 var(RCON) config bool bSMDEBUG;
 var(RCON) config bool bRPG;
 
-var bool bHasUpdate, bCoreHasUpdate;
+var(RCON) config bool bHasUpdate;
 var string netversion;
 var string GSCData;
-
-const version = "180102";
+var float TimeUntilUpdate;
+const version = "180109";
 
 function CodeBase _CodeBase()
 {
@@ -64,6 +64,7 @@ function PostBeginPlay()
 	local Actor A;
 	local bool bMutatorFound, bMutatorFound2, bMutatorFound3, bMutatorFound4, bMutatorFound5, bMutatorFound6, bMutatorFound7, bMutatorFound8, bMutatorFound9, bMutatorFound10, bMutatorFound11, bMutatorFound12;
 
+	TimeUntilUpdate = RandRange(60,120);
 		if (Level.NetMode != NM_Standalone && Role == ROLE_Authority)
 		{
 			Log("",'RCON');
@@ -232,29 +233,31 @@ function Tick(float deltatime)
 {
 local DeusExDecoration DXD;
 local string datastring, DataStore, corever;
-
-	if(GSCData != "")
+	
+	if(TimeUntilUpdate > 0)
+		TimeUntilUpdate-=1;
+		
+	if(GSCData != "" && TimeUntilUpdate <= 0)
 	{
 		DataStore = GSCData;
 		GSCData = "";
-		Log("Data from Update Client found.... filtering version string.");
+		Log("Data from Update Client found.... filtering version string.", 'RCON');
 		datastring = _CodeBase().Split(DataStore, "<rcon>", "</rcon>");
-		corever = _CodeBase().Split(DataStore, "<core>", "</core>");
 		Log("Returned net version: "$datastring$" - Current version: "$version, 'RCON');
-		Log("Returned core version: "$corever$" - Current core version: "$_CodeBase().version);
 		BroadcastMessage(_CodeBase().Split(DataStore, "<motd>", "</motd>"));
 
 		if(datastring != version)
 		{
 			bHasUpdate=True;
-			Log("Version mismatch.. update available? Check for updates at http://deusex.ucoz.net", 'RCON');
+			SaveConfig();
+			Log("Version mismatch.. update available? Check for updates at https://github.com/Kaiz0r/RCON", 'RCON');
 			BroadcastMessage("RCON has an update available!");
 		}
-		if(corever != _CodeBase().version)
+		else
 		{
-			bCoreHasUpdate=True;
-			Log("Version mismatch.. update available? Check for updates at http://deusex.ucoz.net", 'TCCore');
-			BroadcastMessage("TCCore has an update available!");
+			bHasUpdate=False;
+			SaveConfig();
+			Log("RCON is up-to-date.", 'RCON');
 		}
 	}
 	
