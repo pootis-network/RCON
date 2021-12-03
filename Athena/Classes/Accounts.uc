@@ -15,7 +15,6 @@ var() config int Logins;
 var() config string Skin;
 var() config string Description;
 var() config int CurCredits;
-var() config vector SaveLocation;
 var() config int CurrentLevel;
 var() config int GainedEXP;
 var() config string ForceName;
@@ -89,15 +88,6 @@ function Update(string str, playerpawn p, logininfo infoz)
 		{
 			if(Accounts[i].Username != "" && Accounts[i].Username ~= str)
 			{
-				if(Accounts[i].SaveLocation != P.Location)
-				{
-					bUpdated=True;
-					u++;
-					if(bDebug)
-						Log("Location update."@i@Accounts[i].SaveLocation@P.Location);
-					Accounts[i].SaveLocation = P.Location;
-					//SaveConfig();	
-				}
 				if(Accounts[i].CurCredits != DeusExPlayer(P).Credits)
 				{	
 					bUpdated=True;
@@ -335,18 +325,6 @@ function bool Login(DeusExPlayer P, string Username, string Password, bool bLoad
 						P.PlayerReplicationInfo.bAdmin=True;
 					}
 					
-				}
-				if(bLoadLoc && Accounts[accountnum].SaveLocation != vect(0,0,0) && InStr(string(Level), SaveLocMap) != -1)
-				{
-					P.SetCollision(false, false, false);
-					P.bCollideWorld = true;
-					P.GotoState('PlayerWalking');
-					P.SetLocation(Accounts[accountnum].SaveLocation);
-					P.SetCollision(true, true , true);
-					P.SetPhysics(PHYS_Walking);
-					P.bCollideWorld = true;
-					P.GotoState('PlayerWalking');
-					P.ClientReStart();
 				}
 				BroadcastMessage("|P4"$P.PlayerReplicationInfo.PlayerName$" has logged in to account "$Accounts[accountnum].Username);
 				return true;
