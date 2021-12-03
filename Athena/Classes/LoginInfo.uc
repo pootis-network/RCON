@@ -93,7 +93,7 @@ function timer()
 		bFirst=True;
 		SetTimer(10,True);
 			if(ac.bForceLogin)
-				Flagger.ClientMessage("|P2Login is required. Closing the menu without logging in will disconnect you.");
+				Flagger.ClientMessage("|P2Login is required. Closing the menu without logging in will KICK you.");
 			else
 				Flagger.ClientMessage("|P4Login is optional but will give access to new features.");
 	}
