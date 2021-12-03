@@ -7,7 +7,6 @@ var MenuUIActionButtonWindow LoginButton, regButton, logoutButton, exitButton;
 var MenuUIEditWindow editUsername, editPassword;
 var MenuUIHeaderWindow winText;
 var localized string closeLabel, closebuttontext, LoginButtonText,regbuttontext,logoutbuttontext,exitbuttontext, usernamelabel, passwordlabel;
-var PersonaCheckBoxWindow  chkLoc;
 var string notelabel;
 var DeusExPlayer _windowOwner;
 var Accounts Ac;
@@ -34,11 +33,8 @@ event InitWindow()
 	editUserName = CreateMenuEditWindow(105, 20, 143, 20, winClient);
 	editPassword = CreateMenuEditWindow(105, 54, 143, 20, winClient);
 	
-	chkLoc = PersonaCheckBoxWindow(winClient.NewChild(Class'PersonaCheckBoxWindow'));
 
-	chkLoc.SetText("Load previous location?");
-	chkLoc.SetToggle(bLoadLoc);
-	chkLoc.SetWindowAlignments(HALIGN_Right, VALIGN_Top, 10, 75);
+	
 	
 	/*myMOTD = PersonaNormalTextWindow(winclient.NewChild(class'PersonaNormalTextWindow'));
 	myMOTD.SetText(tempmotd);
@@ -217,7 +213,7 @@ defaultproperties
      PasswordLabel="Password"
      CloseLabel="Close"
      bLoadLoc=True
-	 NoteLabel=" |P2Accounts allows you to access more|n server features, like cheats and recording your credits.|P1|n Enter a username and password then click |n Register to create an account using the input.|n Then click Login or press Enter key to begin!|n If you you have an account, enter in the details|n then click Login.|n|n|P7(>Say m.setskin |P2<skin name>|P7 to set your permanent skin|n(>Say m.setusername |P2<new username>|P7 to change username|n(>Say m.setpass |P2<new pass>|P7 to change password|n(>Say m.acc to bring this menu back."
+     NoteLabel=" |P2Accounts allows you to protect your username|n server features, like cheats and recording your credits.|nYou must login to play on this server!|P1|n Enter a username and password then click |n Register to create an account using the input.|n Then click Login or press Enter key to begin!|n If you you have an account, enter in the details|n then click Login.|n|n|P7(>Say m.setskin |P2<skin name>|P7 to set your permanent skin|n(>Say m.setusername |P2<new username>|P7 to change username|n(>Say m.setpass |P2<new pass>|P7 to change password|n(>Say m.acc to bring this menu back."
      loginButtonText="Login <Enter>"
      logoutButtontext="Logout"
      regButtonText="Register"
